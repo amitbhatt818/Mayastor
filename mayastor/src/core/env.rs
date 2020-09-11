@@ -47,7 +47,6 @@ use crate::{
     },
     grpc,
     logger,
-    nats,
     subsys::Config,
     target::iscsi,
 };
@@ -109,8 +108,10 @@ pub struct MayastorCliArgs {
     /// Name of the node where mayastor is running (ID used by control plane)
     pub node_name: Option<String>,
     #[structopt(short = "n")]
-    /// IP address and port of the NATS server
-    pub nats_endpoint: Option<String>,
+    /// URL of the message bus, example formats:
+    /// nats://${name_or_ip}:{optional_port}
+    /// ${name_or_ip}:{optional_port}
+    pub mbus_endpoint: Option<String>,
     /// The maximum amount of hugepage memory we are allowed to allocate in MiB
     /// (default: all)
     #[structopt(
@@ -141,7 +142,7 @@ impl Default for MayastorCliArgs {
     fn default() -> Self {
         Self {
             grpc_endpoint: None,
-            nats_endpoint: None,
+            mbus_endpoint: None,
             node_name: None,
             env_context: None,
             reactor_mask: "0x1".into(),
@@ -204,8 +205,8 @@ type Result<T, E = EnvError> = std::result::Result<T, E>;
 pub struct MayastorEnvironment {
     pub config: Option<String>,
     node_name: String,
-    nats_endpoint: Option<String>,
-    grpc_endpoint: Option<String>,
+    pub mbus_endpoint: Option<String>,
+    pub grpc_endpoint: Option<String>,
     mayastor_config: Option<String>,
     delay_subsystem_init: bool,
     enable_coredump: bool,
@@ -238,7 +239,7 @@ impl Default for MayastorEnvironment {
         Self {
             config: None,
             node_name: "mayastor-node".into(),
-            nats_endpoint: None,
+            mbus_endpoint: None,
             grpc_endpoint: None,
             mayastor_config: None,
             delay_subsystem_init: false,
@@ -286,7 +287,6 @@ async fn do_shutdown(arg: *mut c_void) {
         warn!("Mayastor stopped non-zero: {}", rc);
     }
 
-    nats::message_bus_stop();
     iscsi::fini();
 
     unsafe {
@@ -342,7 +342,7 @@ impl MayastorEnvironment {
     pub fn new(args: MayastorCliArgs) -> Self {
         Self {
             grpc_endpoint: add_default_port(args.grpc_endpoint, 10124),
-            nats_endpoint: add_default_port(args.nats_endpoint, 4222),
+            mbus_endpoint: args.mbus_endpoint,
             node_name: args.node_name.unwrap_or_else(|| "mayastor-node".into()),
             config: args.config,
             mayastor_config: args.mayastor_config,
@@ -720,10 +720,13 @@ impl MayastorEnvironment {
     where
         F: FnOnce() + 'static,
     {
+        // wait for the nats client to be connected
+        smol::block_on(async {
+            crate::subsys::wait_for_connection().await;
+        });
+
         type FutureResult = Result<(), ()>;
         let grpc_endpoint = self.grpc_endpoint.clone();
-        let nats_endpoint = self.nats_endpoint.clone();
-        let node_name = self.node_name.clone();
         self.init();
 
         let mut rt = Builder::new()
@@ -745,11 +748,6 @@ impl MayastorEnvironment {
                         futures.push(Box::pin(grpc::MayastorGrpcServer::run(
                             grpc_ep,
                         )));
-                        if let Some(nats_ep) = nats_endpoint.as_ref() {
-                            futures.push(Box::pin(nats::message_bus_run(
-                                nats_ep, &node_name, grpc_ep,
-                            )));
-                        }
                     };
                     futures.push(Box::pin(master));
                     let _out = future::try_join_all(futures).await;

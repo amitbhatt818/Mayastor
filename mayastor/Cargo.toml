@@ -35,6 +35,7 @@ path = "src/bin/casperf.rs"
 [dependencies]
 async-task = "3.0"
 async-trait = "0.1.36"
+async-mutex = "1.1.5"
 bincode = "1.2"
 byte-unit = "3.0.1"
 bytes = "0.4.12"
@@ -70,6 +71,7 @@ tower = "0.3"
 tracing = "0.1"
 tracing-futures = "0.2.4"
 url = "2.1"
+smol = "1.0.0"
 
 [dependencies.rpc]
 path = "../rpc"

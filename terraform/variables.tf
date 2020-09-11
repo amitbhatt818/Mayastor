@@ -1,19 +1,19 @@
 variable "private_key_path" {
   type        = string
   description = "SSH private key path"
-  #default     = "/home/user/.ssh/id_rsa"
+  default     = "/home/tiago/.ssh/id_rsa"
 }
 
 variable "ssh_key" {
   type        = string
   description = "SSH pub key to use"
-  #default     = "ssh-rsa ..."
+  default     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDLiP7L7Lm9T01qkqg3NwzYqffzeA5bk67h21DtpK4nbogEm6oTg7mysUoDyoUzDfFwvijlOyPbs48NyIwqGeOu9HDVOG2ZKbcfcxmBr4VLqLDB2LZp6896dcMA2BAHDxsb4PEjNRkjy5+WZdOezALzu3yrfMpoyAgNbe1Ip2CcFrcJjxgsRjF/hhOyWiJONtUlRG6g24eBP13dvetd3DmfAPtnZOIX3MY5XCHQtu7AofR6G0/0qXtBzNAdlqNs+qpljkTT87HISsR094PmwrN9gvHUd+3OUdbzLhkvexPFq3iMJX1BTAa+Irc5nOuENQGnCf7RZGjV62/fQ6pRJtJo0v3KJjvVLtRZqXWaEeK0GA5BXP8F6ZXUgYYk27ZUBk/VJFFNU0e5+Vq4RBWMi4xE7Ht8s/u7k+6Lnqhe84NAlcdV1EptL+ebGGySIvWVKcbJ7TgJt0HHtkNb4xKtIRtYGobA4RCXR158rSOnK5X3GA+e2qewuGu8dgRIlNa5iYc= tiago@tigmo-mj"
 }
 
 variable "ssh_user" {
   type        = string
   description = "The user that should be created and who has sudo power"
-  #default     = "user"
+  default     = "tiago"
 }
 
 variable "image_path" {

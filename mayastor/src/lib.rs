@@ -1,3 +1,4 @@
+#![feature(once_cell)]
 #[macro_use]
 extern crate ioctl_gen;
 #[macro_use]
@@ -17,7 +18,6 @@ pub mod grpc;
 pub mod jsonrpc;
 pub mod logger;
 pub mod lvs;
-pub mod nats;
 pub mod nexus_uri;
 pub mod pool;
 pub mod rebuild;

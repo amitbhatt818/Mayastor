@@ -21,9 +21,12 @@ use spdk_sys::{
     spdk_subsystem_depend,
 };
 
+pub use mbus::{wait_for_connection, MessageBus, MessageBusSubsystem};
+
 use crate::subsys::nvmf::Nvmf;
 
 mod config;
+mod mbus;
 mod nvmf;
 
 pub(crate) fn register_subsystem() {
@@ -35,4 +38,5 @@ pub(crate) fn register_subsystem() {
         spdk_add_subsystem(Nvmf::new().0);
         spdk_add_subsystem_depend(Box::into_raw(depend));
     }
+    unsafe { spdk_add_subsystem(MessageBusSubsystem::new().0) }
 }

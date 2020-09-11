@@ -29,7 +29,8 @@ sudo tee /etc/docker/daemon.json >/dev/null <<EOF
   "log-opts": {
     "max-size": "100m"
   },
-  "storage-driver": "overlay2"
+  "storage-driver":  "overlay2",
+  "insecure-registries" : ["192.168.1.137:5000"]
 }
 EOF
 

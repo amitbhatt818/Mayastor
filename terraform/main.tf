@@ -11,8 +11,8 @@ module "k8s" {
 }
 
 module "provider" {
-  #source = "./mod/lxd"
-  source = "./mod/libvirt"
+  source = "./mod/lxd"
+  #source = "./mod/libvirt"
 
   # lxd and libvirt
   ssh_user  = var.ssh_user
