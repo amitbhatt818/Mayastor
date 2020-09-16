@@ -11,6 +11,8 @@ const log = require('./logger').Logger('pool-operator');
 const Watcher = require('./watcher');
 const EventStream = require('./event_stream');
 const Workq = require('./workq');
+const { FinalizerHelper } = require('./finalizer_helper');
+const poolFinalizerValue = 'finalizer.mayastor.openebs.io';
 
 // Load custom resource definition
 const crdPool = yaml.safeLoad(
@@ -28,6 +30,12 @@ class PoolOperator {
     this.resource = {}; // List of storage pool resources indexed by name.
     this.watcher = null; // pool CRD watcher.
     this.workq = new Workq(); // for serializing pool operations
+    this.finalizerHelper = new FinalizerHelper(
+      this.namespace,
+      crdPool.spec.group,
+      crdPool.spec.version,
+      crdPool.spec.names.plural
+    );
   }
 
   // Create pool CRD if it doesn't exist and augment client object so that CRD
@@ -307,7 +315,8 @@ class PoolOperator {
       reason,
       pool.disks,
       pool.capacity,
-      pool.used
+      pool.used,
+      pool.replicas.length
     );
   }
 
@@ -324,8 +333,9 @@ class PoolOperator {
   // @param {string[]} [disks]  Disk URIs.
   // @param {number} [capacity] Capacity of the pool in bytes.
   // @param {number} [used]     Used bytes in the pool.
+  // @param {number} [replicacount] Count of replicas using the pool.
   //
-  async _updateResourceProps (name, state, reason, disks, capacity, used) {
+  async _updateResourceProps (name, state, reason, disks, capacity, used, replicacount) {
     // For the update of CRD status we need a real k8s pool object, change the
     // status in it and store it back. Another reason for grabbing the latest
     // version of CRD from watcher cache (even if this.resource contains an older
@@ -362,7 +372,6 @@ class PoolOperator {
     if (used != null) {
       status.used = used;
     }
-    k8sPool.status = status;
 
     try {
       await this.k8sClient.apis['openebs.io'].v1alpha1
@@ -371,6 +380,21 @@ class PoolOperator {
         .status.put({ body: k8sPool });
     } catch (err) {
       log.error(`Failed to update status of pool "${name}": ${err}`);
+    }
+    k8sPool.status = status;
+
+    if (replicacount != null) {
+      if (replicacount === 0) {
+        if (k8sPool.metadata.finalizers !== undefined) {
+          this.finalizerHelper.removeFinalizer(name, poolFinalizerValue);
+        }
+      } else {
+        if (k8sPool.metadata.deletionTimestamp === undefined) {
+          this.finalizerHelper.addFinalizer(name, poolFinalizerValue);
+        } else {
+          log.trace('deletionTimestamp is set, not adding finalizers');
+        }
+      }
     }
   }
 }
