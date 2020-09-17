@@ -1587,15 +1587,6 @@ let
         sha512 = "8UEa58QDLauDNfpbrX55Q9jrGHThw2ZMdOky5Gl1CDtVeJDPVrG4Jxx1N8jw2gkWaff5UUuX1KJd+9zGe2B+ZA==";
       };
     };
-    "fast-json-patch-3.0.0-1" = {
-      name = "fast-json-patch";
-      packageName = "fast-json-patch";
-      version = "3.0.0-1";
-      src = fetchurl {
-        url = "https://registry.npmjs.org/fast-json-patch/-/fast-json-patch-3.0.0-1.tgz";
-        sha512 = "6pdFb07cknxvPzCeLsFHStEy+MysPJPgZQ9LbQ/2O67unQF93SNqfdSqnPPl71YMHX+AD8gbl7iuoGFzHEdDuw==";
-      };
-    };
     "fast-json-stable-stringify-2.1.0" = {
       name = "fast-json-stable-stringify";
       packageName = "fast-json-stable-stringify";
