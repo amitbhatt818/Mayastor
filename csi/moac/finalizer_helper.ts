@@ -48,7 +48,6 @@ export class FinalizerHelper {
                 body.metadata.finalizers = [finalizer];
               }
 
-              body.metadata.generation += 1;
               this.k8sApi.replaceNamespacedCustomObject(
                   this.groupname,
                   this.version,
@@ -89,7 +88,6 @@ export class FinalizerHelper {
               }
               body.metadata.finalizers.splice(index, 1);
 
-              body.metadata.generation += 1;
               this.k8sApi.replaceNamespacedCustomObject(
                 this.groupname,
                 this.version,
