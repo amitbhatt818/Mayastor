@@ -118,6 +118,8 @@ class PoolOperator {
         await self.workq.push(ev, self._onPoolEvent.bind(self));
       } else if (ev.kind === 'node' && (ev.eventType === 'sync' || ev.eventType === 'mod')) {
         await self.workq.push(ev.object.name, self._onNodeSyncEvent.bind(self));
+      } else if (ev.kind === 'replica' && (ev.eventType === 'new' || ev.eventType === 'del')) {
+        await self.workq.push(ev, self._onReplicaEvent.bind(self));
       }
     });
   }
@@ -162,6 +164,31 @@ class PoolOperator {
     );
     for (let i = 0; i < resources.length; i++) {
       await this._createPool(resources[i]);
+    }
+  }
+
+  // Handler for new/del replica events
+  //
+  // @param {object} ev       Replica event as received from event stream.
+  //
+  async _onReplicaEvent (ev) {
+    const name = ev.object.name;
+    const replica = ev.object;
+
+    log.debug(`Received "${ev.eventType}" event for replica "${name}"`);
+
+    if (ev.eventType === 'new') {
+      if (replica.pool !== undefined) {
+        this.finalizerHelper.addFinalizerToCR(replica.pool.name, poolFinalizerValue);
+      } else {
+        log.warn('replica pool not defined.');
+      }
+    } else if (ev.eventType === 'del') {
+      if (replica.pool !== undefined) {
+        this.finalizerHelper.removeFinalizerFromCR(replica.pool.name, poolFinalizerValue);
+      } else {
+        log.warn('replica pool not defined.');
+      }
     }
   }
 
@@ -385,15 +412,9 @@ class PoolOperator {
 
     if (replicacount != null) {
       if (replicacount === 0) {
-        if (k8sPool.metadata.finalizers !== undefined) {
-          this.finalizerHelper.removeFinalizer(name, poolFinalizerValue);
-        }
+        this.finalizerHelper.removeFinalizer(k8sPool, name, poolFinalizerValue);
       } else {
-        if (k8sPool.metadata.deletionTimestamp === undefined) {
-          this.finalizerHelper.addFinalizer(name, poolFinalizerValue);
-        } else {
-          log.trace('deletionTimestamp is set, not adding finalizers');
-        }
+        this.finalizerHelper.addFinalizer(k8sPool, name, poolFinalizerValue);
       }
     }
   }

@@ -22,7 +22,69 @@ export class FinalizerHelper {
       this.plural = plural;
   }
 
-  addFinalizer(instancename: String, finalizer: String) {
+  addFinalizer(body: any, instancename: String, finalizer: String) {
+    if (body.metadata.deletionTimestamp != undefined) {
+      log.warn(`addFinalizer(${instancename},${finalizer}), deletionTimestamp is set`);
+      return;
+    }
+
+    if (body.metadata.finalizers != undefined) {
+      const index = body.metadata.finalizers.indexOf(finalizer);
+      if ( index > -1) {
+        log.info(`@addFinalizer(${instancename},${finalizer}), finalizer already present`);
+        return;
+      }
+      body.metadata.finalizers.push(finalizer);
+    } else {
+      body.metadata.finalizers = [finalizer];
+    }
+
+    // TODO: use patchNamespacedCustomObject
+    this.k8sApi.replaceNamespacedCustomObject(
+        this.groupname,
+        this.version,
+        this.namespace,
+        this.plural,
+        instancename,
+        body)
+        .then((res:any) => {
+          log.info(`added finalizer:${finalizer} to ${this.plural}:${instancename}`);
+        })
+        .catch((err:any) => {
+         log.error(`add finalizer:${finalizer} to ${this.plural}:${instancename}, update failed: code=${err.body.code}, reason=${err.body.reason}, ${err.body.message}`);
+        });
+  }
+
+  removeFinalizer(body: any, instancename: String, finalizer: String) {
+    if (body.metadata.finalizers == undefined) {
+        log.info(`removeFinalizer(${instancename},${finalizer}), no finalizers on pool`);
+        return;
+    }
+
+    const index = body.metadata.finalizers.indexOf(finalizer);
+    if ( index < 0) {
+        log.info(`removeFinalizer(${instancename},${finalizer}), finalizer not found`);
+        return;
+    }
+    body.metadata.finalizers.splice(index, 1);
+
+    // TODO: use patchNamespacedCustomObject
+    this.k8sApi.replaceNamespacedCustomObject(
+      this.groupname,
+      this.version,
+      this.namespace,
+      this.plural,
+      instancename,
+      body).
+      then((res:any) => {
+        log.info(`removed finalizer:${finalizer} from ${this.plural}:${instancename}`);
+      })
+      .catch((err: any) => {
+        log.error(`remove finalizer:${finalizer} from ${this.plural}:${instancename}, update failed: code=${err.body.code}, reason=${err.body.reason}, ${err.body.message}`);
+      });
+  }
+
+  addFinalizerToCR(instancename: String, finalizer: String) {
       this.k8sApi.getNamespacedCustomObject(
           this.groupname,
           this.version,
@@ -33,14 +95,14 @@ export class FinalizerHelper {
               let body = customresource.body;
 
               if (body.metadata.deletionTimestamp != undefined) {
-                log.warn(`addFinalizer(${instancename},${finalizer}), deletionTimestamp is set`);
+                log.warn(`addFinalizerToCR(${instancename},${finalizer}), deletionTimestamp is set`);
                 return;
               }
 
               if (body.metadata.finalizers != undefined) {
                 const index = body.metadata.finalizers.indexOf(finalizer);
                 if ( index > -1) {
-                  log.warn(`@addFinalizer(${instancename},${finalizer}), finalizer already present`);
+                  log.info(`@addFinalizerToCR(${instancename},${finalizer}), finalizer already present`);
                   return;
                 }
                 body.metadata.finalizers.splice(-1, 0, finalizer);
@@ -67,7 +129,7 @@ export class FinalizerHelper {
           });
   }
 
-  removeFinalizer(instancename: String, finalizer: String) {
+  removeFinalizerFromCR(instancename: String, finalizer: String) {
       this.k8sApi.getNamespacedCustomObject(
           this.groupname,
           this.version,
@@ -77,13 +139,13 @@ export class FinalizerHelper {
           .then((customresource:any) => {
               let body = customresource.body;
               if (body.metadata.finalizers == undefined) {
-                  log.warn(`removeFinalizer(${instancename},${finalizer}), no finalizers on pool`);
+                  log.info(`removeFinalizerFromCR(${instancename},${finalizer}), no finalizers on pool`);
                   return;
               }
 
               const index = body.metadata.finalizers.indexOf(finalizer);
               if ( index < 0) {
-                  log.warn(`removeFinalizer(${instancename},${finalizer}), finalizer not found`);
+                  log.info(`removeFinalizerFromCR(${instancename},${finalizer}), finalizer not found`);
                   return;
               }
               body.metadata.finalizers.splice(index, 1);
