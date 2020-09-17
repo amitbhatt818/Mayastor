@@ -172,23 +172,27 @@ class PoolOperator {
   // @param {object} ev       Replica event as received from event stream.
   //
   async _onReplicaEvent (ev) {
-    const name = ev.object.name;
     const replica = ev.object;
 
-    log.debug(`Received "${ev.eventType}" event for replica "${name}"`);
+    log.debug(`Received "${ev.eventType}" event for replica "${replica.name}"`);
 
-    if (ev.eventType === 'new') {
-      if (replica.pool !== undefined) {
-        this.finalizerHelper.addFinalizerToCR(replica.pool.name, poolFinalizerValue);
-      } else {
-        log.warn('replica pool not defined.');
-      }
-    } else if (ev.eventType === 'del') {
-      if (replica.pool !== undefined) {
-        this.finalizerHelper.removeFinalizerFromCR(replica.pool.name, poolFinalizerValue);
-      } else {
-        log.warn('replica pool not defined.');
-      }
+    if (replica.pool === undefined) {
+      log.warn(`not processing for finalizers: pool not defined for replica ${replica.name}.`);
+      return;
+    }
+
+    const pool = this.registry.getPool(replica.pool.name);
+    if (pool == null) {
+      log.warn(`not processing for finalizers: failed to retrieve pool ${replica.pool.name}`);
+      return;
+    }
+
+    log.debug(`On "${ev.eventType}" event for replica "${replica.name}", replica count=${pool.replicas.length}`);
+
+    if (pool.replicas.length > 0) {
+      this.finalizerHelper.addFinalizerToCR(replica.pool.name, poolFinalizerValue);
+    } else {
+      this.finalizerHelper.removeFinalizerFromCR(replica.pool.name, poolFinalizerValue);
     }
   }
 
